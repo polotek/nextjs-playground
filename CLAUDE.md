@@ -11,3 +11,5 @@ This is a project for learning an experimenting with Next.js. The project was cr
 - Whenever possible, use current Next.js best practices unless otherwise specified.
 
 # Tools and Commands
+
+- Assume the dev server is always running. You don't need to run it explicitly
