@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { track } from '@vercel/analytics';
 import AudioRecorder from './components/AudioRecorder';
 import RecordingsList from './components/RecordingsList';
 import { AudioRecording } from './types/audio';
@@ -30,6 +31,12 @@ export default function Home() {
     try {
       const savedRecordings = await audioStorage.getRecordings();
       setRecordings(savedRecordings);
+
+      // Track app initialization
+      track('app_initialized', {
+        existing_recordings: savedRecordings.length,
+        has_existing_data: savedRecordings.length > 0
+      });
     } catch (error) {
       console.error('Failed to load recordings:', error);
     }

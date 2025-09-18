@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { track } from '@vercel/analytics';
 import { AudioDevice, audioDeviceManager } from '../lib/audioDevices';
 
 interface MicrophoneSelectorProps {
@@ -41,6 +42,12 @@ export default function MicrophoneSelector({
       const audioDevices = await audioDeviceManager.getAudioInputDevices();
       setDevices(audioDevices);
 
+      // Track device enumeration
+      track('devices_enumerated', {
+        device_count: audioDevices.length,
+        has_multiple_devices: audioDevices.length > 1
+      });
+
       // If no device is selected and we have devices available, select the first one
       if (!selectedDeviceId && audioDevices.length > 0) {
         onDeviceChange(audioDevices[0].deviceId);
@@ -70,8 +77,17 @@ export default function MicrophoneSelector({
 
       if (isWorking) {
         onDeviceChange(deviceId);
+
+        // Track successful device switch
+        track('microphone_switched', {
+          device_label: devices.find(d => d.deviceId === deviceId)?.label || 'Unknown',
+          total_devices: devices.length
+        });
       } else {
         setError('Selected microphone is not working properly');
+
+        // Track device test failure
+        track('microphone_test_failed');
       }
     } catch (err) {
       setError('Failed to switch to selected microphone');
@@ -80,6 +96,9 @@ export default function MicrophoneSelector({
   };
 
   const refreshDevices = () => {
+    // Track device refresh action
+    track('devices_refreshed');
+
     loadDevices();
   };
 

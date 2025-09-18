@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { track } from '@vercel/analytics';
 import { AudioRecording, PlaybackState } from '../types/audio';
 import { audioStorage } from '../lib/audioStorage';
 
@@ -102,14 +103,24 @@ export default function RecordingsList({ recordings, onRecordingsChange }: Recor
           audio,
         },
       }));
+
+      // Track playback start
+      track('playback_started', {
+        recording_duration: recording.duration,
+        recording_age_days: Math.floor((Date.now() - recording.createdAt.getTime()) / (1000 * 60 * 60 * 24))
+      });
     } catch (error) {
       console.error('Error playing audio:', error);
+
+      // Track playback error
+      track('playback_error');
     }
   };
 
   const pauseRecording = (recordingId: string) => {
     const audio = audioRefs.current[recordingId];
     if (audio) {
+      const currentTime = audio.currentTime;
       audio.pause();
       setPlaybackStates(prev => ({
         ...prev,
@@ -118,12 +129,18 @@ export default function RecordingsList({ recordings, onRecordingsChange }: Recor
           isPlaying: false,
         },
       }));
+
+      // Track playback pause
+      track('playback_paused', {
+        playback_time: Math.round(currentTime)
+      });
     }
   };
 
   const seekTo = (recordingId: string, time: number) => {
     const audio = audioRefs.current[recordingId];
     if (audio) {
+      const oldTime = audio.currentTime;
       audio.currentTime = time;
       setPlaybackStates(prev => ({
         ...prev,
@@ -132,6 +149,12 @@ export default function RecordingsList({ recordings, onRecordingsChange }: Recor
           currentTime: time,
         },
       }));
+
+      // Track seek action
+      track('playback_seek', {
+        from_time: Math.round(oldTime),
+        to_time: Math.round(time)
+      });
     }
   };
 
@@ -148,9 +171,17 @@ export default function RecordingsList({ recordings, onRecordingsChange }: Recor
           delete audioRefs.current[recordingId];
         }
 
+        // Track recording deletion
+        track('recording_deleted', {
+          total_recordings: recordings.length - 1
+        });
+
         onRecordingsChange();
       } catch (error) {
         console.error('Error deleting recording:', error);
+
+        // Track deletion error
+        track('recording_delete_error');
       }
     }
   };

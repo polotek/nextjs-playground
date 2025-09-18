@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { track } from '@vercel/analytics';
 import { AudioRecording, RecordingState } from '../types/audio';
 import { audioStorage } from '../lib/audioStorage';
 import MicrophoneSelector from './MicrophoneSelector';
@@ -95,9 +96,19 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
         try {
           await audioStorage.saveRecording(recording);
           onRecordingComplete(recording);
+
+          // Track successful recording completion
+          track('recording_completed', {
+            duration_seconds: duration,
+            file_size_mb: Math.round(audioBlob.size / (1024 * 1024) * 100) / 100,
+            mime_type: mediaRecorder.mimeType
+          });
         } catch (err) {
           setError('Failed to save recording');
           console.error('Save error:', err);
+
+          // Track recording save error
+          track('recording_save_error');
         }
 
         // Cleanup
@@ -117,6 +128,12 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
       };
 
       mediaRecorder.start();
+
+      // Track recording start
+      track('recording_started', {
+        device_id: selectedDeviceId || 'default',
+        mime_type: mediaRecorder.mimeType
+      });
 
       // Start timer
       timerRef.current = setInterval(() => {
@@ -152,6 +169,11 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
       recordingState.mediaRecorder.pause();
       setRecordingState(prev => ({ ...prev, isPaused: true }));
 
+      // Track recording pause
+      track('recording_paused', {
+        duration_at_pause: recordingState.recordingTime
+      });
+
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -162,6 +184,11 @@ export default function AudioRecorder({ onRecordingComplete }: AudioRecorderProp
     if (recordingState.mediaRecorder && recordingState.isPaused) {
       recordingState.mediaRecorder.resume();
       setRecordingState(prev => ({ ...prev, isPaused: false }));
+
+      // Track recording resume
+      track('recording_resumed', {
+        total_duration: recordingState.recordingTime
+      });
 
       // Resume timer
       timerRef.current = setInterval(() => {
